@@ -1,0 +1,15 @@
+config {
+  type: "table",  -- Define el tipo de modelo, en este caso una tabla.
+  incremental: true,  -- Indica que este modelo debe actualizarse de manera incremental.
+  uniqueKey: "id"  -- Clave única para las filas incrementales.
+}
+
+select
+  id,
+  name,
+  created_at
+from
+  ${ref("source_table")}  -- Referencia a la tabla de origen.
+where
+  created_at > ${incrementalLastModified()}  -- Filtra solo las filas modificadas desde la última ejecución incremental.
+

@@ -1,0 +1,11 @@
+{
+  "defaultDatabase": "example_project_db",  -- Base de datos predeterminada.
+  "defaultSchema": "example_schema",  -- Esquema predeterminado.
+  "assertionSchema": "assertions",  -- Esquema para las aserciones.
+  "warehouse": "bigquery",  -- Almacén de datos, en este caso BigQuery.
+  "vars": {
+    "incremental": true  -- Variable de configuración adicional.
+  }
+}
+
+  

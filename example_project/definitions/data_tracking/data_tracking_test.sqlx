@@ -1,0 +1,74 @@
+config {
+  type: "incremental",  -- Define que este modelo es incremental.
+  uniqueKey: ["tracking_id", "sample_seq", "issue_code", "method_id", "metric_id"],  -- Claves únicas para los registros.
+  tags: ["etl-tracking-example"],  -- Etiquetas para la organización.
+  name: "data_tracking_test"
+}
+
+pre_operations {
+  DELETE
+  FROM
+    `example_project.stage_dw_sima.data_tracking_test`
+  WHERE
+    CONCAT(tracking_id, '-', sample_seq, '-', issue_code, '-', method_id, '-', metric_id) IN (
+      SELECT
+        CONCAT(track.id, '-', sample.seq, '-', sample.issue_code, '-', sample.method_id, '-', sample.metric_id)
+      FROM
+        `example_project.staging.example_trackings` AS track
+      LEFT JOIN
+        `example_project.staging.example_sample_values` AS sample
+      ON
+        track.id = sample.tracking_id
+      WHERE
+        CAST(track.modified_at AS TIMESTAMP) > (
+          SELECT MAX(CAST(modified_at AS TIMESTAMP))
+          FROM `example_project.stage_dw_sima.data_tracking_test`
+        )
+    )
+}
+
+SELECT
+  track.id AS tracking_id,
+  sample.seq AS sample_seq,
+  sample.issue_code,
+  sample.method_id AS method_id,
+  sample.metric_id AS metric_id,
+  -999 AS project_key,
+  track.state_code AS state_key,
+  -999 AS climate_state_key,
+  -999 AS location_state_key,
+  track.created_by AS creator_key,
+  track.signal AS signal,
+  CASE track.signal
+      WHEN 1 THEN 'Red'
+      WHEN 2 THEN 'Yellow'
+      WHEN 3 THEN 'Green'
+      ELSE 'N/A'
+  END AS signal_name,
+  track.sample_count AS sample_count,
+  track.estimated_value AS estimated_value_kg_ha,
+  TIMESTAMP(track.deleted_at) AS deleted_at,
+  track.latitude AS latitude,
+  track.longitude AS longitude,
+  TIMESTAMP(track.date) AS date,
+  track.comments AS comments,
+  sample.value AS sample_value,
+  alert.latitude AS sample_latitude,
+  alert.longitude AS sample_longitude,
+  alert.summary AS sample_signal_summary,
+  1 AS is_recent,
+  track.modified_at
+FROM
+  `example_project.staging.example_trackings` AS track
+LEFT JOIN
+  `example_project.staging.example_sample_values` AS sample
+ON
+  track.id = sample.tracking_id
+LEFT JOIN
+  `example_project.staging.example_sample_alerts` AS alert
+ON
+  track.id = alert.tracking_id AND sample.seq = alert.sample_seq
+WHERE
+  ${when(incremental(), 
+    `CAST(track.modified_at AS TIMESTAMP) > (SELECT MAX(CAST(modified_at AS TIMESTAMP)) FROM example_project.stage_dw_sima.data_tracking_test)`, 
+    `true`)}

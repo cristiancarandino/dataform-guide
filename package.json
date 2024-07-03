@@ -1,0 +1,11 @@
+{
+  "name": "dataform-project",  -- Nombre del proyecto.
+  "version": "1.0.0",  -- Versión del proyecto.
+  "description": "A demo Dataform project",  -- Descripción del proyecto.
+  "main": "index.js",  -- Archivo principal del proyecto.
+  "dependencies": {
+    "@dataform/core": "^1.0.0"  -- Dependencias del proyecto.
+  }
+}
+
+  

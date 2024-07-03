@@ -1,0 +1,5 @@
+defaultProject: example_project  -- Proyecto por defecto.
+defaultLocation: US  -- Ubicación por defecto.
+defaultDataset: name_dataset  -- Dataset por defecto.
+defaultAssertionDataset: name_dataset  -- Dataset de aserciones por defecto.
+dataformCoreVersion: 3.0.0-beta.4  -- Versión de Dataform Core.

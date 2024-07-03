@@ -1,0 +1,12 @@
+config {
+  type: "test"  -- Define este script como una prueba.
+}
+
+select
+  id,
+  name,
+  created_at
+from
+  ${ref("example_model")}  -- Referencia al modelo 'example_model'.
+where
+  id is null  -- Condición de prueba: verifica que no haya IDs nulos en 'example_model'.
