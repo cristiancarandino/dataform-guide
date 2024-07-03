@@ -1,74 +1,74 @@
 config {
   type: "incremental",  -- Define que este modelo es incremental.
-  uniqueKey: ["tracking_id", "sample_seq", "issue_code", "method_id", "metric_id"],  -- Claves únicas para los registros.
-  tags: ["etl-tracking-example"],  -- Etiquetas para la organización.
-  name: "data_tracking_test"
+  uniqueKey: ["sale_id", "product_id", "issue_code", "method_id", "metric_id"],  -- Claves únicas para los registros.
+  tags: ["etl-kiosk-example"],  -- Etiquetas para la organización.
+  name: "kiosk_transactions"
 }
 
 pre_operations {
   DELETE
   FROM
-    `example_project.stage_dw_sima.data_tracking_test`
+    `example_project.stage_dw_kiosk.kiosk_transactions`
   WHERE
-    CONCAT(tracking_id, '-', sample_seq, '-', issue_code, '-', method_id, '-', metric_id) IN (
+    CONCAT(sale_id, '-', product_id, '-', issue_code, '-', method_id, '-', metric_id) IN (
       SELECT
-        CONCAT(track.id, '-', sample.seq, '-', sample.issue_code, '-', sample.method_id, '-', sample.metric_id)
+        CONCAT(sale.id, '-', product.id, '-', product.issue_code, '-', product.method_id, '-', product.metric_id)
       FROM
-        `example_project.staging.example_trackings` AS track
+        `example_project.staging.kiosk_sales` AS sale
       LEFT JOIN
-        `example_project.staging.example_sample_values` AS sample
+        `example_project.staging.kiosk_product_values` AS product
       ON
-        track.id = sample.tracking_id
+        sale.id = product.sale_id
       WHERE
-        CAST(track.modified_at AS TIMESTAMP) > (
+        CAST(sale.modified_at AS TIMESTAMP) > (
           SELECT MAX(CAST(modified_at AS TIMESTAMP))
-          FROM `example_project.stage_dw_sima.data_tracking_test`
+          FROM `example_project.stage_dw_kiosk.kiosk_transactions`
         )
     )
 }
 
 SELECT
-  track.id AS tracking_id,
-  sample.seq AS sample_seq,
-  sample.issue_code,
-  sample.method_id AS method_id,
-  sample.metric_id AS metric_id,
-  -999 AS project_key,
-  track.state_code AS state_key,
-  -999 AS climate_state_key,
-  -999 AS location_state_key,
-  track.created_by AS creator_key,
-  track.signal AS signal,
-  CASE track.signal
-      WHEN 1 THEN 'Red'
-      WHEN 2 THEN 'Yellow'
-      WHEN 3 THEN 'Green'
-      ELSE 'N/A'
-  END AS signal_name,
-  track.sample_count AS sample_count,
-  track.estimated_value AS estimated_value_kg_ha,
-  TIMESTAMP(track.deleted_at) AS deleted_at,
-  track.latitude AS latitude,
-  track.longitude AS longitude,
-  TIMESTAMP(track.date) AS date,
-  track.comments AS comments,
-  sample.value AS sample_value,
-  alert.latitude AS sample_latitude,
-  alert.longitude AS sample_longitude,
-  alert.summary AS sample_signal_summary,
-  1 AS is_recent,
-  track.modified_at
+  sale.id AS sale_id,  -- Identificador único de la venta
+  product.id AS product_id,  -- Identificador único del producto
+  product.issue_code,  -- Código de problema asociado al producto
+  product.method_id AS method_id,  -- Identificador del método utilizado
+  product.metric_id AS metric_id,  -- Identificador de la métrica utilizada
+  -1 AS promotion_key,  -- Clave de promoción aplicada
+  sale.state_id AS state_key,  -- Clave del estado de la venta
+  sale.product_count AS product_count,  -- Cantidad de productos en la venta
+  sale.estimated_value AS estimated_value_usd,  -- Valor estimado de la venta en USD
+  TIMESTAMP(sale.deleted_at) AS deleted_at,  -- Fecha de eliminación de la venta
+  sale.latitude AS latitude,  -- Latitud de la venta
+  sale.longitude AS longitude,  -- Longitud de la venta
+  TIMESTAMP(sale.sale_date) AS sale_date,  -- Fecha de la venta
+  sale.comments AS comments,  -- Comentarios adicionales sobre la venta
+  product.value AS product_value,  -- Valor del producto en la venta
+  alerts.latitude AS alert_latitude,  -- Latitud de la alerta
+  alerts.longitude AS alert_longitude,  -- Longitud de la alerta
+  alerts.summary AS alert_summary,  -- Resumen de la alerta
+  1 AS is_recent,  -- Indica si es reciente
+  sale.modified_at,  -- Fecha de modificación de la venta
+  inventory.stock_level AS stock_level,  -- Nivel de stock del producto
+  employee.name AS employee_name  -- Nombre del empleado que realizó la venta
 FROM
-  `example_project.staging.example_trackings` AS track
+  `example_project.staging.kiosk_sales` AS sale
 LEFT JOIN
-  `example_project.staging.example_sample_values` AS sample
+  `example_project.staging.kiosk_product_values` AS product  -- Unión con valores de productos
 ON
-  track.id = sample.tracking_id
+  sale.id = product.sale_id
 LEFT JOIN
-  `example_project.staging.example_sample_alerts` AS alert
+  `example_project.staging.kiosk_product_alerts` AS alerts  -- Unión con alertas de productos
 ON
-  track.id = alert.tracking_id AND sample.seq = alert.sample_seq
+  sale.id = alerts.sale_id AND product.id = alerts.product_id
+LEFT JOIN
+  `example_project.staging.kiosk_inventory` AS inventory  -- Unión con inventario de productos
+ON
+  product.id = inventory.product_id
+LEFT JOIN
+  `example_project.staging.kiosk_employees` AS employee  -- Unión con empleados
+ON
+  sale.employee_id = employee.id
 WHERE
   ${when(incremental(), 
-    `CAST(track.modified_at AS TIMESTAMP) > (SELECT MAX(CAST(modified_at AS TIMESTAMP)) FROM example_project.stage_dw_sima.data_tracking_test)`, 
+    `CAST(sale.modified_at AS TIMESTAMP) > (SELECT MAX(CAST(modified_at AS TIMESTAMP)) FROM example_project.stage_dw_kiosk.kiosk_transactions)`, 
     `true`)}
